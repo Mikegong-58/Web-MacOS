@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>macOS Desktop</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: url('assets/macOS-26.jpg') center center / cover no-repeat;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 白色过渡层 */
+        .transition-overlay {
+            position: fixed;
+            top: 24px;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.02) 80%, transparent 100%);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* 顶部菜单栏 */
+        .menu-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 24px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.1) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 13px;
+            color: white;
+        }
+
+        .menu-items {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .menu-item {
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .menu-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .apple-logo {
+            font-size: 16px;
+            margin-right: 20px;
+            color: white;
+            position: relative;
+        }
+
+        .apple-logo::before {
+            content: "";
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background: white;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z'/%3E%3C/svg%3E") no-repeat center;
+            mask-size: contain;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z'/%3E%3C/svg%3E") no-repeat center;
+            -webkit-mask-size: contain;
+        }
+
+        /* 应用窗口 */
+        .app-window {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            width: 800px;
+            height: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            pointer-events: none;
+        }
+
+        .app-window.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: all;
+        }
+
+        .app-window-header {
+            height: 36px;
+            background: #f6f6f6;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: move;
+            user-select: none;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .window-control {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .window-control:hover {
+            transform: scale(1.1);
+        }
+
+        .window-control.close {
+            background: #ff5f57;
+        }
+
+        .window-control.minimize {
+            background: #ffbd2e;
+        }
+
+        .window-control.maximize {
+            background: #28ca42;
+        }
+
+        .app-window-content {
+            height: calc(100% - 36px);
+            background: white;
+            border-radius: 0 0 20px 20px;
+        }
+
+        /* Dock栏 */
+        .dock {
+            position: fixed;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 9999;
+        }
+
+        /* 迷你窗口 */
+        .mini-window {
+            position: fixed;
+            bottom: 88px;
+            left: calc(50% + 200px);
+            width: 60px;
+            height: 45px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 9998;
+            opacity: 0;
+            transform: scale(0.1) translateY(50px);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            pointer-events: none;
+            cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .mini-window.show {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            pointer-events: all;
+        }
+
+        .mini-window-header {
+            height: 8px;
+            background: #f6f6f6;
+            border-radius: 5px 5px 0 0;
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .mini-window-controls {
+            display: flex;
+            gap: 2px;
+        }
+
+        .mini-window-control {
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+        }
+
+        .mini-window-control.close {
+            background: #ff5f57;
+        }
+
+        .mini-window-control.minimize {
+            background: #ffbd2e;
+        }
+
+        .mini-window-control.maximize {
+            background: #28ca42;
+        }
+
+        .mini-window-content {
+            height: calc(100% - 8px);
+            background: white;
+            border-radius: 0 0 5px 5px;
+        }
+
+        .dock-icon {
+            width: 64px;
+            height: 64px;
+            cursor: pointer;
+            border-radius: 16px;
+            transition: transform 0.2s ease-out;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-origin: center bottom;
+            will-change: transform;
+        }
+
+        /* 图标提示框 - 白底毛玻璃效果 */
+        .icon-tooltip {
+            position: fixed;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            color: black;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            z-index: 10000;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(5px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .icon-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .icon-tooltip.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .dock-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 16px;
+        }
+
+        .dock-icon:active {
+            transform: translateY(-4px) scale(1.05);
+        }
+
+        /* 毛玻璃分隔线 */
+        .dock-separator {
+            width: 1px;
+            height: 60px;
+            background: rgba(255,255,255,0.3);
+            margin: 0 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 白色过渡层 -->
+    <div class="transition-overlay"></div>
+    <!-- 顶部菜单栏 -->
+    <div class="menu-bar">
+        <div class="apple-logo"></div>
+        <div class="menu-items">
+            <div class="menu-item">访达</div>
+            <div class="menu-item">文件</div>
+            <div class="menu-item">编辑</div>
+            <div class="menu-item">显示</div>
+            <div class="menu-item">前往</div>
+            <div class="menu-item">窗口</div>
+            <div class="menu-item">帮助</div>
+        </div>
+    </div>
+
+    <!-- 应用窗口 -->
+    <div class="app-window" id="appWindow">
+        <div class="app-window-header">
+            <div class="window-controls">
+                <div class="window-control close" onclick="closeWindow()"></div>
+                <div class="window-control minimize" onclick="minimizeWindow()"></div>
+                <div class="window-control maximize" onclick="maximizeWindow()"></div>
+            </div>
+        </div>
+        <div class="app-window-content">
+            <!-- 应用内容区域 -->
+        </div>
+    </div>
+
+    <!-- 迷你窗口 -->
+    <div class="mini-window" id="miniWindow" onclick="restoreFromMini()">
+        <div class="mini-window-header">
+            <div class="mini-window-controls">
+                <div class="mini-window-control close"></div>
+                <div class="mini-window-control minimize"></div>
+                <div class="mini-window-control maximize"></div>
+            </div>
+        </div>
+        <div class="mini-window-content">
+        </div>
+    </div>
+
+    <!-- Dock栏 -->
+    <div class="dock">
+        <div class="dock-icon" data-app="访达">
+            <img src="assets/icon/访达.png" alt="访达">
+        </div>
+        <div class="dock-icon" data-app="备忘录">
+            <img src="assets/icon/备忘录.png" alt="备忘录">
+        </div>
+        <div class="dock-icon" data-app="计算器">
+            <img src="assets/icon/计算器.png" alt="计算器">
+        </div>
+        <div class="dock-icon" data-app="家庭">
+            <img src="assets/icon/家庭.png" alt="家庭">
+        </div>
+        <div class="dock-icon" data-app="日历">
+            <img src="assets/icon/日历.png" alt="日历">
+        </div>
+        <div class="dock-icon" data-app="时钟">
+            <img src="assets/icon/时钟.png" alt="时钟">
+        </div>
+        <div class="dock-icon" data-app="天气">
+            <img src="assets/icon/天气.png" alt="天气">
+        </div>
+        <div class="dock-icon" data-app="系统设置">
+            <img src="assets/icon/系统设置.png" alt="系统设置">
+        </div>
+        <div class="dock-icon" data-app="App Store">
+            <img src="assets/icon/App Store.png" alt="App Store">
+        </div>
+        <div class="dock-icon" data-app="Safari浏览器">
+            <img src="assets/icon/Safari浏览器.png" alt="Safari浏览器">
+        </div>
+        <div class="dock-separator"></div>
+        <div class="dock-icon" data-app="废纸篓">
+            <img src="assets/icon/废纸篓.png" alt="废纸篓">
+        </div>
+    </div>
+
+    <script>
+        // 应用窗口控制
+        let currentWindow = null;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let windowPosition = { x: null, y: null }; // 保存用户调整的位置
+        let isMinimized = false;
+
+        function openApp(appName) {
+            const appWindow = document.getElementById('appWindow');
+            const miniWindow = document.getElementById('miniWindow');
+            
+            currentWindow = appName;
+            isMinimized = false;
+            
+            // 隐藏迷你窗口
+            miniWindow.classList.remove('show');
+            
+            // 恢复窗口位置
+            if (windowPosition.x !== null && windowPosition.y !== null) {
+                // 保持用户调整的位置
+                appWindow.style.left = windowPosition.x + 'px';
+                appWindow.style.top = windowPosition.y + 'px';
+                appWindow.style.transform = 'translate(-50%, -50%) scale(1)';
+            } else {
+                // 默认居中位置
+                appWindow.style.left = '50%';
+                appWindow.style.top = '50%';
+                appWindow.style.transform = 'translate(-50%, -50%) scale(1)';
+            }
+            
+            // 重置窗口大小和样式
+            appWindow.style.width = '800px';
+            appWindow.style.height = '600px';
+            appWindow.style.borderRadius = '20px';
+            
+            appWindow.classList.add('show');
+        }
+
+        function closeWindow() {
+            const appWindow = document.getElementById('appWindow');
+            const miniWindow = document.getElementById('miniWindow');
+            
+            appWindow.classList.remove('show');
+            miniWindow.classList.remove('show');
+            
+            // 重置位置记录
+            windowPosition = { x: null, y: null };
+            currentWindow = null;
+            isMinimized = false;
+        }
+
+        function minimizeWindow() {
+            const appWindow = document.getElementById('appWindow');
+            const miniWindow = document.getElementById('miniWindow');
+            
+            // 保存当前窗口位置
+            const rect = appWindow.getBoundingClientRect();
+            windowPosition.x = appWindow.style.left || '50%';
+            windowPosition.y = appWindow.style.top || '50%';
+            
+            // 获取dock位置用于动画
+            const dockRect = document.querySelector('.dock').getBoundingClientRect();
+            const targetX = dockRect.right - 70; // 调整到合适位置
+            const targetY = window.innerHeight - 140;
+            
+            // 创建吸入动画
+            appWindow.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            appWindow.style.transform = `translate(-50%, -50%) scale(0.15)`;
+            appWindow.style.left = targetX + 'px';
+            appWindow.style.top = targetY + 'px';
+            appWindow.style.opacity = '0.3';
+            
+            setTimeout(() => {
+                appWindow.classList.remove('show');
+                appWindow.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                appWindow.style.opacity = '0';
+                
+                // 显示迷你窗口
+                miniWindow.classList.add('show');
+                isMinimized = true;
+            }, 400);
+        }
+
+        function restoreFromMini() {
+            if (!isMinimized || !currentWindow) return;
+            
+            const appWindow = document.getElementById('appWindow');
+            const miniWindow = document.getElementById('miniWindow');
+            
+            // 隐藏迷你窗口
+            miniWindow.classList.remove('show');
+            
+            // 显示主窗口
+            appWindow.classList.add('show');
+            
+            // 恢复到用户调整的位置
+            setTimeout(() => {
+                if (windowPosition.x !== null && windowPosition.y !== null) {
+                    appWindow.style.left = windowPosition.x;
+                    appWindow.style.top = windowPosition.y;
+                } else {
+                    appWindow.style.left = '50%';
+                    appWindow.style.top = '50%';
+                }
+                appWindow.style.transform = 'translate(-50%, -50%) scale(1)';
+                appWindow.style.opacity = '1';
+                isMinimized = false;
+            }, 100);
+        }
+
+        function maximizeWindow() {
+            const appWindow = document.getElementById('appWindow');
+            if (appWindow.style.width === '100vw') {
+                // 恢复窗口
+                appWindow.style.width = '800px';
+                appWindow.style.height = '600px';
+                if (windowPosition.x !== null && windowPosition.y !== null) {
+                    appWindow.style.left = windowPosition.x;
+                    appWindow.style.top = windowPosition.y;
+                } else {
+                    appWindow.style.left = '50%';
+                    appWindow.style.top = '50%';
+                }
+                appWindow.style.transform = 'translate(-50%, -50%) scale(1)';
+                appWindow.style.borderRadius = '20px';
+            } else {
+                // 最大化窗口
+                appWindow.style.width = '100vw';
+                appWindow.style.height = '100vh';
+                appWindow.style.top = '0';
+                appWindow.style.left = '0';
+                appWindow.style.transform = 'none';
+                appWindow.style.borderRadius = '0';
+            }
+        }
+
+        // 窗口拖拽功能
+        function initWindowDrag() {
+            const appWindow = document.getElementById('appWindow');
+            const header = appWindow.querySelector('.app-window-header');
+            
+            header.addEventListener('mousedown', function(e) {
+                if (e.target.classList.contains('window-control')) return;
+                
+                isDragging = true;
+                const rect = appWindow.getBoundingClientRect();
+                dragOffset.x = e.clientX - rect.left - rect.width / 2;
+                dragOffset.y = e.clientY - rect.top - rect.height / 2;
+                
+                appWindow.style.transition = 'none';
+                document.addEventListener('mousemove', handleDrag);
+                document.addEventListener('mouseup', stopDrag);
+            });
+            
+            function handleDrag(e) {
+                if (!isDragging) return;
+                
+                const x = e.clientX - dragOffset.x;
+                const y = e.clientY - dragOffset.y;
+                
+                appWindow.style.left = x + 'px';
+                appWindow.style.top = y + 'px';
+                appWindow.style.transform = 'translate(-50%, -50%) scale(1)';
+                
+                // 保存用户调整的位置
+                windowPosition.x = x;
+                windowPosition.y = y;
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                appWindow.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                document.removeEventListener('mousemove', handleDrag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+        }
+
+        // Dock图标交互
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化窗口拖拽功能
+            initWindowDrag();
+            
+            const dockIcons = document.querySelectorAll('.dock-icon');
+            let tooltip = null;
+            
+            // 创建提示框
+            function createTooltip() {
+                if (!tooltip) {
+                    tooltip = document.createElement('div');
+                    tooltip.className = 'icon-tooltip';
+                    document.body.appendChild(tooltip);
+                }
+                return tooltip;
+            }
+            
+            // 显示提示框
+            function showTooltip(icon, text) {
+                const tooltip = createTooltip();
+                const rect = icon.getBoundingClientRect();
+                
+                tooltip.textContent = text;
+                tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                tooltip.style.top = (rect.top - 50) + 'px';
+                tooltip.style.transform = 'translateX(-50%) translateY(5px)';
+                
+                requestAnimationFrame(() => {
+                    tooltip.classList.add('show');
+                    tooltip.style.transform = 'translateX(-50%) translateY(0)';
+                });
+            }
+            
+            // 隐藏提示框
+            function hideTooltip() {
+                if (tooltip) {
+                    tooltip.classList.remove('show');
+                }
+            }
+            
+            // 获取图标名称
+            function getIconName(icon) {
+                const img = icon.querySelector('img');
+                return img ? img.alt : '';
+            }
+            
+            dockIcons.forEach((icon) => {
+                // 悬停效果 - 只放大当前图标
+                icon.addEventListener('mouseenter', function() {
+                    requestAnimationFrame(() => {
+                        this.style.transform = 'scale(1.3)';
+                        
+                        const iconName = getIconName(this);
+                        if (iconName) {
+                            showTooltip(this, iconName);
+                        }
+                    });
+                });
+                
+                icon.addEventListener('mouseleave', function() {
+                    hideTooltip();
+                    requestAnimationFrame(() => {
+                        this.style.transform = 'scale(1)';
+                    });
+                });
+
+                // 点击事件 - 打开应用（除了启动台和废纸篓）
+                icon.addEventListener('click', function(e) {
+                    // 防止事件冒泡和默认行为
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const appName = this.getAttribute('data-app');
+                    if (appName && appName !== '启动台' && appName !== '废纸篓') {
+                        // 如果应用已经在迷你模式，直接恢复
+                        if (isMinimized && currentWindow === appName) {
+                            restoreFromMini();
+                        } else {
+                            openApp(appName);
+                        }
+                    }
+                });
+            });
+            
+            // 重置所有图标当鼠标离开dock
+            const dock = document.querySelector('.dock');
+            dock.addEventListener('mouseleave', function() {
+                hideTooltip();
+                requestAnimationFrame(() => {
+                    dockIcons.forEach(icon => {
+                        icon.style.transform = 'scale(1)';
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
